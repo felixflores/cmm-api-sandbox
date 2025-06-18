@@ -1,0 +1,308 @@
+openapi: 3.0.3
+info:
+  title: CoverMyMeds Prior Authorization API (archived 2019)
+  description: >
+    REST interface for creating and managing prior-authorization (PA) requests,
+    tokens and “request-pages” workflow screens.
+    This specification is derived from the documentation snapshot taken
+    2020-08-05 and may not reflect current production behaviour.
+  version: "2019-11-18"
+servers:
+  - url: https://api.covermymeds.com
+components:
+  securitySchemes:
+    bearerToken:
+      type: http
+      scheme: bearer
+      bearerFormat: api_id+token_id
+    basicAuth:
+      type: http
+      scheme: basic
+  parameters:
+    v:
+      name: v
+      in: query
+      required: true
+      schema: { type: integer, enum: [1], default: 1 }
+    api_id:
+      name: api_id
+      in: query
+      required: true
+      schema: { type: string }
+    token_id:
+      name: token_id
+      in: query
+      required: true
+      schema: { type: string }
+  schemas:
+    Patient:
+      type: object
+      required: [first_name, last_name, date_of_birth]
+      properties:
+        first_name: { type: string }
+        middle_name: { type: string }
+        last_name:  { type: string }
+        date_of_birth: { type: string, description: mm/dd/yyyy }
+    Prescription:
+      type: object
+      required: [drug_id]
+      properties:
+        drug_id: { type: string }
+    Request:
+      type: object
+      required: [state, patient, prescription]
+      properties:
+        urgent: { type: boolean }
+        form_id: { type: string }
+        state:   { type: string, maxLength: 2 }
+        memo:    { type: string, maxLength: 4000 }
+        patient: { $ref: '#/components/schemas/Patient' }
+        prescription: { $ref: '#/components/schemas/Prescription' }
+    Question:
+      type: object
+      required: [question_id, question_type, question_text]
+      properties:
+        question_id: { type: string }
+        question_type:
+          type: string
+          enum: [FREE_TEXT, CHOICE, DATE, NUMERIC, STATEMENT, HIDDEN, FILE, CHECKBOX, FREE_AREA]
+        question_text: { type: string }
+        default_next_question_id: { type: string }
+        flag:
+          type: string
+          enum: [REQUIRED, IMPORTANT]
+        help_text: { type: string }
+        coded_reference: { type: object }
+        validations:
+          type: array
+          items: { type: string }
+        choices:
+          type: array
+          items:
+            type: object
+            properties:
+              code: { type: string }
+              display: { type: string }
+              next_question_id: { type: string }
+        select_multiple: { type: boolean }
+        comparisons: { type: array, items: { type: object } }
+        content_plain: { type: string }
+        content_html:  { type: string }
+        checked_value: { type: string }
+        placeholder:   { type: string }
+        question_answer: { type: string }
+        question_answers: { type: array, items: { type: string } }
+    Action:
+      type: object
+      properties:
+        ref:    { type: string, nullable: true }
+        title:  { type: string }
+        href:   { type: string, format: uri }
+        method: { type: string, enum: [GET, POST, PUT, DELETE] }
+        display:{ type: string, enum: [DEFAULT, DISABLED] }
+    RequestPage:
+      type: object
+      properties:
+        forms:
+          type: array
+          items:
+            type: object
+            properties:
+              identifier: { type: string }
+              question_sets:
+                type: array
+                items:
+                  type: object
+                  properties:
+                    title: { type: string }
+                    questions:
+                      type: array
+                      items: { $ref: '#/components/schemas/Question' }
+        actions:
+          type: array
+          items: { $ref: '#/components/schemas/Action' }
+    Token:
+      type: object
+      properties:
+        id:          { type: string }
+        request_id:  { type: string }
+        href:        { type: string, format: uri }
+        html_url:    { type: string, format: uri }
+        pdf_url:     { type: string, format: uri }
+paths:
+  /requests:
+    post:
+      summary: Create a new PA request
+      security: [ { bearerToken: [] } ]
+      parameters: [ { $ref: '#/components/parameters/v' },
+                    { $ref: '#/components/parameters/api_id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request: { $ref: '#/components/schemas/Request' }
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Request' }
+  /requests/{id}:
+    get:
+      summary: Retrieve a single PA
+      security: [ { bearerToken: [] } ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: '#/components/parameters/token_id' }
+        - { $ref: '#/components/parameters/v' }
+        - { $ref: '#/components/parameters/api_id' }
+      responses:
+        '200':
+          description: Request found
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Request' }
+    put:
+      summary: Update memo on an existing PA
+      security: [ { bearerToken: [] } ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: '#/components/parameters/token_id' }
+        - { $ref: '#/components/parameters/v' }
+        - { $ref: '#/components/parameters/api_id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request:
+                  type: object
+                  properties:
+                    memo: { type: string, maxLength: 4000 }
+      responses:
+        '204': { description: Updated }
+    delete:
+      summary: Delete a PA (soft-delete)
+      security: [ { bearerToken: [] } ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: '#/components/parameters/token_id' }
+        - { $ref: '#/components/parameters/v' }
+        - { $ref: '#/components/parameters/api_id' }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                remote_user:
+                  type: object
+                  properties:
+                    display_name: { type: string }
+                    phone_number: { type: string }
+                    fax_number:   { type: string }
+      responses:
+        '204': { description: Deleted }
+  /requests/search:
+    post:
+      deprecated: true
+      summary: Bulk fetch PAs by token_id
+      security: [ { bearerToken: [] } ]
+      parameters: [ { $ref: '#/components/parameters/v' },
+                    { $ref: '#/components/parameters/api_id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                token_ids:
+                  type: array
+                  items: { type: string }
+      responses:
+        '200':
+          description: List of requests
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  requests:
+                    type: array
+                    items: { $ref: '#/components/schemas/Request' }
+  /requests/tokens:
+    post:
+      summary: Create access tokens for one or more PA requests
+      security: [ { basicAuth: [] } ]
+      parameters: [ { $ref: '#/components/parameters/v' },
+                    { $ref: '#/components/parameters/api_id' } ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                request_ids:
+                  type: array
+                  items: { type: string }
+      responses:
+        '201':
+          description: Tokens created
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  tokens:
+                    type: array
+                    items: { $ref: '#/components/schemas/Token' }
+  /requests/tokens/{token_id}:
+    delete:
+      summary: Revoke an access token
+      security: [ { basicAuth: [] } ]
+      parameters:
+        - name: token_id
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: '#/components/parameters/v' }
+        - { $ref: '#/components/parameters/api_id' }
+      responses:
+        '204': { description: Token deleted }
+  /request-pages/{id}:
+    get:
+      summary: Retrieve the current request-page (hypermedia workflow)
+      security: [ { bearerToken: [] } ]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string }
+        - { $ref: '#/components/parameters/token_id' }
+        - { $ref: '#/components/parameters/v' }
+        - { $ref: '#/components/parameters/api_id' }
+      responses:
+        '200':
+          description: Request page
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/RequestPage' }
+            application/typed+json:
+              schema: { $ref: '#/components/schemas/RequestPage' }

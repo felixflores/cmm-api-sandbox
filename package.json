@@ -1,0 +1,44 @@
+{
+  "name": "covermymeds-api-sandbox",
+  "version": "1.0.0",
+  "description": "Interactive API sandbox for CoverMyMeds Prior Authorization API",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest --watchAll",
+    "test:once": "jest",
+    "test:coverage": "jest --coverage",
+    "cli": "node src/cli.js"
+  },
+  "keywords": [
+    "api",
+    "sandbox",
+    "covermymeds",
+    "prior-authorization"
+  ],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.10.0",
+    "body-parser": "^1.20.2",
+    "cors": "^2.8.5",
+    "dotenv": "^16.0.3",
+    "express": "^4.18.2",
+    "morgan": "^1.10.0",
+    "uuid": "^9.0.0"
+  },
+  "devDependencies": {
+    "jest": "^29.5.0",
+    "nodemon": "^2.0.22",
+    "supertest": "^6.3.3"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "coverageDirectory": "coverage",
+    "collectCoverageFrom": [
+      "src/**/*.js",
+      "!src/server.js"
+    ]
+  }
+}
