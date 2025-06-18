@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "cmm-mcp-server": {
+      "command": "npx",
+      "args": ["tsx", "src/server.ts"],
+      "cwd": "/Users/felixflores/Projects/cmmdemo/cmm-mcp-server",
+      "env": {
+        "CMM_API_URL": "http://localhost:3000",
+        "CMM_API_KEY": "demo-api-key"
+      }
+    }
+  }
+}
