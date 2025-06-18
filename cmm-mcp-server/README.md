@@ -90,14 +90,27 @@ Step-by-step guidance for completing PA forms. Adapts explanations to patient re
 
 ### Claude Desktop Integration
 
-Add this configuration to your Claude Desktop MCP settings:
+1. **Copy the configuration template**:
+   ```bash
+   cp claude-desktop-config.json ~/.claude-desktop-config.json
+   ```
 
+2. **Update the path** in your copied config file:
+   - Replace `/path/to/cmm-mcp-server` with your actual project path
+   - For example: `/Users/yourname/Projects/cmmdemo/cmm-mcp-server`
+
+3. **Restart Claude Desktop** to load the new MCP server
+
+#### Configuration Options
+
+**For Production (recommended)**:
 ```json
 {
   "mcpServers": {
     "cmm-mcp-server": {
       "command": "node", 
-      "args": ["/path/to/cmmdemo/cmm-mcp-server/dist/server.js"],
+      "args": ["dist/server.js"],
+      "cwd": "/path/to/cmm-mcp-server",
       "env": {
         "CMM_API_URL": "http://localhost:3000",
         "CMM_API_KEY": "demo-api-key"
@@ -107,15 +120,14 @@ Add this configuration to your Claude Desktop MCP settings:
 }
 ```
 
-Or for development:
-
+**For Development**:
 ```json
 {
   "mcpServers": {
     "cmm-mcp-server": {
       "command": "npx",
-      "args": ["tsx", "/path/to/cmmdemo/cmm-mcp-server/src/server.ts"],
-      "cwd": "/path/to/cmmdemo/cmm-mcp-server",
+      "args": ["tsx", "src/server.ts"],
+      "cwd": "/path/to/cmm-mcp-server",
       "env": {
         "CMM_API_URL": "http://localhost:3000", 
         "CMM_API_KEY": "demo-api-key"
@@ -124,6 +136,8 @@ Or for development:
   }
 }
 ```
+
+**Note**: For production use, first build the project with `npm run build`
 
 ## 💡 Example Usage
 
