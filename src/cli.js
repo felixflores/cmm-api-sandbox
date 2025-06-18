@@ -1,7 +1,9 @@
 #!/usr/bin/env node
 
+require('dotenv').config();
 const readline = require('readline');
 const axios = require('axios');
+const GitHubService = require('./utils/github');
 
 const rl = readline.createInterface({
   input: process.stdin,
@@ -38,6 +40,8 @@ function printMenu() {
   console.log('7. Delete Token');
   console.log('8. Get Request Page');
   console.log('9. Toggle Auth Type (Bearer/Basic)');
+  console.log('10. List GitHub Issues');
+  console.log('11. Get GitHub Issue Details');
   console.log('0. Exit\n');
 }
 
@@ -199,6 +203,97 @@ function toggleAuth() {
   console.log(`\n${colors.green}Auth type switched to: ${authType}${colors.reset}`);
 }
 
+async function listGitHubIssues() {
+  const owner = process.env.GITHUB_OWNER;
+  const repo = process.env.GITHUB_REPO;
+  
+  if (!owner || !repo) {
+    console.log(`${colors.red}Error: GITHUB_OWNER and GITHUB_REPO must be set in .env file${colors.reset}`);
+    return;
+  }
+
+  if (!process.env.GITHUB_TOKEN) {
+    console.log(`${colors.red}Error: GITHUB_TOKEN must be set in .env file${colors.reset}`);
+    return;
+  }
+
+  try {
+    console.log(`\n${colors.cyan}Fetching GitHub issues from ${owner}/${repo}...${colors.reset}`);
+    const github = new GitHubService();
+    const issues = await github.getRepositoryIssues(owner, repo, { per_page: 10 });
+    
+    if (issues.length === 0) {
+      console.log(`${colors.yellow}No issues found${colors.reset}`);
+      return;
+    }
+
+    console.log(`\n${colors.bright}Found ${issues.length} issues:${colors.reset}\n`);
+    
+    issues.forEach((issue, index) => {
+      const statusColor = issue.state === 'open' ? colors.green : colors.red;
+      const labels = issue.labels.map(label => `[${label.name}]`).join(' ');
+      
+      console.log(`${colors.bright}${index + 1}. #${issue.number} ${issue.title}${colors.reset}`);
+      console.log(`   Status: ${statusColor}${issue.state}${colors.reset}`);
+      if (labels) console.log(`   Labels: ${colors.blue}${labels}${colors.reset}`);
+      console.log(`   Created: ${colors.dim}${new Date(issue.created_at).toLocaleDateString()}${colors.reset}`);
+      console.log(`   URL: ${colors.cyan}${issue.url}${colors.reset}\n`);
+    });
+    
+  } catch (error) {
+    console.log(`${colors.red}Error fetching GitHub issues: ${error.message}${colors.reset}`);
+  }
+}
+
+async function getGitHubIssueDetails() {
+  return new Promise((resolve) => {
+    rl.question('Enter GitHub issue number: ', async (issueNumber) => {
+      const owner = process.env.GITHUB_OWNER;
+      const repo = process.env.GITHUB_REPO;
+      
+      if (!owner || !repo) {
+        console.log(`${colors.red}Error: GITHUB_OWNER and GITHUB_REPO must be set in .env file${colors.reset}`);
+        resolve();
+        return;
+      }
+
+      if (!process.env.GITHUB_TOKEN) {
+        console.log(`${colors.red}Error: GITHUB_TOKEN must be set in .env file${colors.reset}`);
+        resolve();
+        return;
+      }
+
+      try {
+        console.log(`\n${colors.cyan}Fetching issue #${issueNumber}...${colors.reset}`);
+        const github = new GitHubService();
+        const issue = await github.getIssue(owner, repo, parseInt(issueNumber));
+        
+        const statusColor = issue.state === 'open' ? colors.green : colors.red;
+        const labels = issue.labels.map(label => `[${label.name}]`).join(' ');
+        const assignees = issue.assignees.map(a => a.login).join(', ');
+        
+        console.log(`\n${colors.bright}Issue #${issue.number}: ${issue.title}${colors.reset}`);
+        console.log(`Status: ${statusColor}${issue.state}${colors.reset}`);
+        if (labels) console.log(`Labels: ${colors.blue}${labels}${colors.reset}`);
+        if (assignees) console.log(`Assignees: ${colors.magenta}${assignees}${colors.reset}`);
+        console.log(`Created: ${colors.dim}${new Date(issue.created_at).toLocaleDateString()}${colors.reset}`);
+        console.log(`Updated: ${colors.dim}${new Date(issue.updated_at).toLocaleDateString()}${colors.reset}`);
+        console.log(`URL: ${colors.cyan}${issue.url}${colors.reset}\n`);
+        
+        if (issue.body) {
+          console.log(`${colors.bright}Description:${colors.reset}`);
+          console.log(issue.body);
+        }
+        
+      } catch (error) {
+        console.log(`${colors.red}Error fetching GitHub issue: ${error.message}${colors.reset}`);
+      }
+      
+      resolve();
+    });
+  });
+}
+
 async function handleChoice(choice) {
   switch (choice) {
     case '1':
@@ -227,6 +322,12 @@ async function handleChoice(choice) {
       break;
     case '9':
       toggleAuth();
+      break;
+    case '10':
+      await listGitHubIssues();
+      break;
+    case '11':
+      await getGitHubIssueDetails();
       break;
     case '0':
       console.log('\nGoodbye!');
